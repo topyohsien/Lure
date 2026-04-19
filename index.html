@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI龍蝦 - 專業魚情監測站</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #f0f2f5; }
+        header { background: #1a2a3a; color: #fff; padding: 15px; text-align: center; font-size: 1.2rem; }
+        #map { height: 400px; width: 100%; }
+        .container { padding: 15px; max-width: 1200px; margin: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .card { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .card h3 { margin-top: 0; color: #1a2a3a; border-bottom: 2px solid #3498db; padding-bottom: 8px; font-size: 1.1rem; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .item { background: #f8f9fa; padding: 10px; border-radius: 6px; text-align: center; }
+        .val { display: block; font-size: 1.5rem; font-weight: bold; color: #e67e22; }
+        .unit { font-size: 0.75rem; color: #7f8c8d; }
+        .advice { background: #d4edda; border-left: 5px solid #28a745; padding: 15px; grid-column: 1 / -1; }
+        select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<header>AI 龍蝦 專業魚情儀表板</header>
+<div id="map"></div>
+
+<div class="container">
+    <div class="card" style="grid-column: 1 / -1;">
+        <h3>選擇日期 (預報有效限度)</h3>
+        <select id="dateSelector"><option>請先在地圖長按釣點...</option></select>
+    </div>
+
+    <div class="card">
+        <h3>即時魚情觀測 (現狀)</h3>
+        <div class="grid">
+            <div class="item"><span class="val" id="w-temp">--</span><span class="unit">水溫 °C (O-B0075)</span></div>
+            <div class="item"><span class="val" id="w-wave">--</span><span class="unit">即時浪高 m (O-B0075)</span></div>
+            <div class="item"><span class="val" id="w-pres">--</span><span class="unit">氣壓 hPa (O-A0003)</span></div>
+            <div class="item"><span class="val" id="w-tide">--</span><span class="unit">實測潮位 cm (O-A0017)</span></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>行程預報 (未來)</h3>
+        <div id="forecast-info">
+            <p>風級：<span id="f-wind">--</span> (F-A0012)</p>
+            <p>浪況：<span id="f-wave">--</span> (F-A0012)</p>
+            <p>潮汐：<span id="f-tide">--</span> (F-A0021)</p>
+            <p>降雨：<span id="f-pop">--</span> (F-C0032)</p>
+        </div>
+    </div>
+
+    <div class="card advice" id="ai-advice">
+        <h3>AI 龍蝦硬核建議</h3>
+        <div id="advice-content">請長按地圖上的釣點（例如綠島或四草），我將為你分析魚情。</div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // GitHub Action 會自動把下面的字串換成你的 Key
+    const API_KEY = 'CWA-337BBD8F-DBC8-4D8D-A92F-DAA5B176120A'; 
+    const map = L.map('map').setView([23.5, 121], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // 疊加雷達回波圖 (W-C049-001)
+    async function loadRadar() {
+        const url = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C049-001?Authorization=${API_KEY}`;
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            const imgUrl = data.records.cwaopendata.dataset.resource.uri;
+            const bounds = [[21.8, 118.0], [26.5, 122.5]];
+            L.imageOverlay(imgUrl, bounds, {opacity: 0.5}).addTo(map);
+        } catch (e) { console.error("雷達圖載入失敗"); }
+    }
+    loadRadar();
+
+    // 長按觸發分析
+    map.on('contextmenu', (e) => {
+        const { lat, lng } = e.latlng;
+        L.marker([lat, lng]).addTo(map).bindPopup("分析中...").openPopup();
+        analyzeFishing(lat, lng);
+    });
+
+    async function analyzeFishing(lat, lng) {
+        document.getElementById('advice-content').innerText = "正在讀取所有 API 數據...";
+        
+        // 這裡僅示範邏輯，實際需串接 fetch 代碼
+        // 模擬數據更新
+        document.getElementById('w-temp').innerText = "24.8";
+        document.getElementById('w-wave').innerText = "1.2";
+        document.getElementById('w-pres').innerText = "1012";
+        document.getElementById('f-wind').innerText = "4級 (偏北風)";
+        document.getElementById('f-tide').innerText = "大潮";
+
+        const temp = 24.8;
+        const tide = "大潮";
+        let msg = `今日水溫 ${temp}°C 配合 ${tide}。`;
+        
+        if (temp > 23 && tide === "大潮") {
+            msg += "【極佳】觀測到黑潮暖流靠近，青物活性極高，建議準備鐵板去岸拋！";
+        } else {
+            msg += "魚群活性普通，建議針對底棲魚種作釣。";
+        }
+        document.getElementById('advice-content').innerHTML = msg;
+    }
+</script>
+</body>
+</html>
