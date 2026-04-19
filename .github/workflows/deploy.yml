@@ -1,0 +1,24 @@
+name: Deploy-Fishing-Dashboard
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Inject API Key
+        run: |
+          # 將 index.html 裡的預留字串替換為 Secret 裡的金鑰
+          sed -i "s/__CWA_API_KEY__/${{ secrets.CWA_API_KEY }}/g" index.html
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: .
+          branch: gh-pages
+          
